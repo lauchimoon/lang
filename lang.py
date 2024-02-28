@@ -316,7 +316,7 @@ def interpret_program(prog):
 
             # Unknown
             case Ops.OP_UNKNOWN:
-                die(f"Unknown operator '{op[1]}'")
+                die(f"Unknown word '{op[1]}'")
 
 program = load_program_from_file(program_path)
 interpret_program(program)
