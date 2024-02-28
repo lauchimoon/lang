@@ -1,2 +1,3 @@
 [x] - else is completely broken when nested, so refactor if-else behaviour
-[] - variables
+[x] - variables
+[] - using variables as other variables values

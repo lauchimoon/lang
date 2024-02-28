@@ -3,6 +3,11 @@ from sys import argv
 
 stack = []
 iota_c = -1
+variables = {}
+builtin_ops = [
+    "true", "false", "mod", "and", "or", "xor",
+    "if", "else", "end", "dup", "swap", "drop"
+]
 
 def die(msg):
     print(f"error: {msg}"); exit(1)
@@ -49,6 +54,9 @@ class Ops(IntEnum):
     OP_SWAP = iota()
     OP_DROP = iota()
 
+    OP_SYMBOL = iota()
+    OP_SET = iota()
+
     OP_UNKNOWN = iota()
 
 def op_str(op):
@@ -77,6 +85,8 @@ def op_str(op):
         case Ops.OP_DUP: return "dup"
         case Ops.OP_SWAP: return "swap"
         case Ops.OP_DROP: return "drop"
+        case Ops.OP_SYMBOL: return op
+        case Ops.OP_SET: return "="
 
 def push(x):
     return (Ops.OP_PUSH, x)
@@ -153,9 +163,18 @@ def elsee():
 def end():
     return (Ops.OP_END, )
 
+def symbol(name):
+    return (Ops.OP_SYMBOL, name, )
+
+def sett():
+    return (Ops.OP_SET, )
+
 def op_from_word(word):
     if word.isnumeric():
         return push(int(word))
+
+    if word.isalnum() and word not in builtin_ops:
+        return push(symbol(word))
 
     match word:
         # Operators
@@ -186,12 +205,16 @@ def op_from_word(word):
         case "else": return elsee()
         case "end": return end()
 
+        # Variables
+        case "=": return sett()
+
         # Builtins
         case "dup": return dup()
         case "swap": return swap()
         case "drop": return drop()
 
         case _: return (Ops.OP_UNKNOWN, word)
+
 
 def crossreference_blocks(prog):
     stck = []
@@ -217,149 +240,133 @@ def load_program_from_file(path):
     with open(path, "r") as f:
         return load_program_from_str(f.read())
 
+def check_if_symbol(arg1, arg2, operator):
+    a = 0
+    b = 0
+    ret_val = 0
+
+    if arg1 is not None:
+        if type(arg1) == tuple:
+            if arg1[0] == Ops.OP_SYMBOL:
+                a = variables[arg1[1]]
+        else:
+            a = arg1
+
+    if arg2 is not None:
+        if type(arg2) == tuple:
+            if arg2[0] == Ops.OP_SYMBOL:
+                b = variables[arg2[1]]
+        else:
+            b = arg2
+
+    match operator:
+        case Ops.OP_ADD: ret_val = a + b
+        case Ops.OP_SUB: ret_val = a - b
+        case Ops.OP_MUL: ret_val = a * b
+        case Ops.OP_DIV:
+            if b == 0:
+                die("division by 0 is not allowed")
+            ret_val = a // b
+        case Ops.OP_POW: ret_val = a ** b
+        case Ops.OP_MOD:
+            if b == 0:
+                die("modulo by 0 is not allowed")
+            ret_val = a % b
+        case Ops.OP_POW: ret_val = a ** b
+
+        case Ops.OP_EQUAL: ret_val = (a == b)
+        case Ops.OP_NEQUAL: ret_val = (a != b)
+        case Ops.OP_LESS: ret_val = (a < b)
+        case Ops.OP_LESSEQ: ret_val = (a <= b)
+        case Ops.OP_GRTR: ret_val = (a > b)
+        case Ops.OP_GRTREQ: ret_val = (a >= b)
+        case Ops.OP_NOT: ret_val = not a
+        case Ops.OP_AND: ret_val = bool(a) and bool(b)
+        case Ops.OP_OR: ret_val = bool(a) or bool(b)
+        case Ops.OP_XOR: ret_val = bool(a) ^ bool(b)
+        case Ops.OP_BOOL_VAL: ret_val = arg1
+
+    return ret_val
+
+def perform_operator(operator):
+    if len(stack) < 2:
+        die(f"Two operands are required for '{op_str(op[0])}'")
+
+    b = stack.pop()
+    a = stack.pop()
+    ret = check_if_symbol(a, b, operator)
+    stack.append(ret)
+
 def interpret_program(prog):
     len_prog = len(prog)
     i = 0
     while i < len_prog:
+        #print(stack)
         op = prog[i]
         match op[0]:
             # Operators
             case Ops.OP_PUSH:
-                arg = op[1]
-                stack.append(arg)
+                stack.append(op[1])
                 i += 1
             case Ops.OP_ADD:
-                if len(stack) < 2:
-                    die(f"Two operands are required for '{op_str(op[0])}'")
-                b = stack.pop()
-                a = stack.pop()
-                stack.append(a + b)
+                perform_operator(op[0])
                 i += 1
             case Ops.OP_SUB:
-                if len(stack) < 2:
-                    die(f"Two operands are required for '{op_str(op[0])}'")
-                b = stack.pop()
-                a = stack.pop()
-                stack.append(a - b)
+                perform_operator(op[0])
                 i += 1
             case Ops.OP_MUL:
-                if len(stack) < 2:
-                    die(f"Two operands are required for '{op_str(op[0])}'")
-                b = stack.pop()
-                a = stack.pop()
-                stack.append(a * b)
+                perform_operator(op[0])
                 i += 1
             case Ops.OP_DIV:
-                if len(stack) < 2:
-                    die(f"Two operands are required for '{op_str(op[0])}'")
-                b = stack.pop()
-                a = stack.pop()
+                perform_operator(op[0])
                 i += 1
-                if b == 0:
-                    die("Division by 0 is not allowed", op[0])
-                stack.append(a // b)
             case Ops.OP_MOD:
-                if len(stack) < 2:
-                    die(f"Two operands are required for '{op_str(op[0])}'")
-                b = stack.pop()
-                a = stack.pop()
-                if b == 0:
-                    die("Modulo a % 0 is not allowed", op[0])
-                stack.append(a % b)
+                perform_operator(op[0])
                 i += 1
             case Ops.OP_POW:
-                if len(stack) < 2:
-                    die(f"Two operands are required for '{op_str(op[0])}'")
-                b = stack.pop()
-                a = stack.pop()
-                stack.append(a ** b)
-                i += 1
-            case Ops.OP_DISPLAY:
-                if len(stack) <= 0:
-                    print()
-                else:
-                    a = stack.pop()
-                    print(("true" if a else "false") if type(a) == bool else a)
-
+                perform_operator(op[0])
                 i += 1
 
             # Boolean/logic
             case Ops.OP_EQUAL:
-                if len(stack) < 2:
-                    die(f"Two operands are required for '{op_str(op[0])}'")
-                b = stack.pop()
-                a = stack.pop()
-                stack.append(a == b)
+                perform_operator(op[0])
                 i += 1
             case Ops.OP_NEQUAL:
-                if len(stack) < 2:
-                    die(f"Two operands are required for '{op_str(op[0])}'")
-                b = stack.pop()
-                a = stack.pop()
-                stack.append(a != b)
+                perform_operator(op[0])
                 i += 1
             case Ops.OP_LESS:
-                if len(stack) < 2:
-                    die(f"Two operands are required for '{op_str(op[0])}'")
-                b = stack.pop()
-                a = stack.pop()
-                stack.append(a < b)
+                perform_operator(op[0])
                 i += 1
             case Ops.OP_LESSEQ:
-                if len(stack) < 2:
-                    die(f"Two operands are required for '{op_str(op[0])}'")
-                b = stack.pop()
-                a = stack.pop()
-                stack.append(a <= b)
+                perform_operator(op[0])
                 i += 1
             case Ops.OP_GRTR:
-                if len(stack) < 2:
-                    die(f"Two operands are required for '{op_str(op[0])}'")
-                b = stack.pop()
-                a = stack.pop()
-                stack.append(a > b)
+                perform_operator(op[0])
                 i += 1
             case Ops.OP_GRTREQ:
-                if len(stack) < 2:
-                    die(f"Two operands are required for '{op_str(op[0])}'")
-                b = stack.pop()
-                a = stack.pop()
-                stack.append(a >= b)
+                perform_operator(op[0])
                 i += 1
 
             case Ops.OP_NOT:
                 if len(stack) < 1:
                     die(f"One operand is required for '{op_str(op[0])}'")
                 a = stack.pop()
-                stack.append(not a)
+                ret = check_if_symbol(a, None, op[0])
+                stack.append(ret)
                 i += 1
             case Ops.OP_AND:
-                if len(stack) < 2:
-                    die(f"Two operands are required for '{op_str(op[0])}'")
-                b = stack.pop()
-                a = stack.pop()
-                pushb = bool(a) and bool(b)
-                stack.append(pushb)
+                perform_operator(op[0])
                 i += 1
             case Ops.OP_OR:
-                if len(stack) < 2:
-                    die(f"Two operands are required for '{op_str(op[0])}'")
-                b = stack.pop()
-                a = stack.pop()
-                pushb = bool(a) or bool(b)
-                stack.append(pushb)
+                perform_operator(op[0])
                 i += 1
             case Ops.OP_XOR:
-                if len(stack) < 2:
-                    die(f"Two operands are required for '{op_str(op[0])}'")
-                b = stack.pop()
-                a = stack.pop()
-                pushb = bool(a)^bool(b)
-                stack.append(pushb)
+                perform_operator(op[0])
                 i += 1
             case Ops.OP_BOOL_VAL:
                 arg = op[1]
-                stack.append(arg)
+                ret = check_if_symbol(arg, None, op[0])
+                stack.append(ret)
                 i += 1
 
             # Control flow
@@ -378,6 +385,16 @@ def interpret_program(prog):
             case Ops.OP_END:
                 i += 1
 
+            # Variables
+            case Ops.OP_SYMBOL:
+                i += 1
+            case Ops.OP_SET:
+                value = stack.pop()
+                name = stack.pop()
+                variables[name[1]] = value
+                #print(variables)
+                i += 1
+
             # Builtins
             case Ops.OP_DUP:
                 if len(stack) <= 0:
@@ -393,6 +410,18 @@ def interpret_program(prog):
                 if len(stack) <= 0:
                     die("Stack is empty, cannot drop")
                 stack.pop()
+                i += 1
+            case Ops.OP_DISPLAY:
+                if len(stack) <= 0:
+                    print()
+                else:
+                    a = stack.pop()
+                    if type(a) == tuple and a[0] == Ops.OP_SYMBOL:
+                        var = variables[a[1]]
+                        print(("true" if var else "false") if type(var) == bool else var)
+                    else:
+                        print(("true" if a else "false") if type(a) == bool else a)
+
                 i += 1
 
             # Unknown

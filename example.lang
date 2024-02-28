@@ -1,10 +1,9 @@
-2 2 + 4 == if
-    true .
-    3 3 + 7 == if
-        7 .
-    else
-        6 .
-    end
+n1 34 =
+n2 35 =
+
+n1 n2 < if
+    n2 .
 else
-    false .
+    n1 .
 end
+
