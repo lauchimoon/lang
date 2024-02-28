@@ -193,18 +193,29 @@ def op_from_word(word):
 
         case _: return (Ops.OP_UNKNOWN, word)
 
+def crossreference_blocks(prog):
+    stck = []
+    for i in range(len(prog)):
+        op = prog[i]
+        match op[0]:
+            case Ops.OP_IF:
+                stck.append(i)
+            case Ops.OP_ELSE: # if references else
+                if_idx = stck.pop()
+                prog[if_idx] = (Ops.OP_IF, i + 1) # if gets sent to else block
+                stck.append(i)
+            case Ops.OP_END:
+                block_idx = stck.pop()
+                prog[block_idx] = (prog[block_idx][0], i) # if or else references end
+
+    return prog
 
 def load_program_from_str(inpt):
-    return [op_from_word(word) for word in inpt.split()]
+    return crossreference_blocks([op_from_word(word) for word in inpt.split()])
 
 def load_program_from_file(path):
     with open(path, "r") as f:
         return load_program_from_str(f.read())
-
-def find_op(prog, op):
-    for p in prog:
-        if p[0] == op:
-            return p
 
 def interpret_program(prog):
     len_prog = len(prog)
@@ -351,40 +362,19 @@ def interpret_program(prog):
                 stack.append(arg)
                 i += 1
 
+            # Control flow
             case Ops.OP_IF:
-                # TODO: nested if does not need 'end'
-                if not end() in prog:
-                    die("if block missing end")
-
-                else_find = elsee() in prog
-                if len(stack) <= 0:
-                    die("if must have a condition")
-
                 cond = stack.pop()
-                if cond and not else_find:
+                if cond:
                     i += 1
-                    op = prog[i]
-                elif cond and else_find: # This is the worst hack you will ever see
-                    tmp_op = list(op)
-                    tmp_op.append(True)
-                    prog[i] = tuple(tmp_op)
-                    i += 1
-                elif not cond and else_find:
-                    tmp_op = list(op)
-                    tmp_op.append(False)
-                    prog[i] = tuple(tmp_op)
-                    i = prog.index(elsee())
-                    op = prog[i]
                 else:
-                    i = prog.index(end())
-                    op = prog[i]
+                    if len(op) < 2:
+                        die("if block missing end")
+                    i = op[1]
             case Ops.OP_ELSE:
-                # This is the worst hack you will ever see
-                if not find_op(prog, Ops.OP_IF)[1]:
-                    i += 1
-                else:
-                    i = prog.index(end())
-                    op = prog[i]
+                if len(op) < 2:
+                    die("else block missing end")
+                i = op[1]
             case Ops.OP_END:
                 i += 1
 
@@ -410,7 +400,6 @@ def interpret_program(prog):
                 word = op[1]
                 die(f"Unknown word '{word}'")
 
-        #print(op, stack)
-
 program = load_program_from_file(program_path)
+#print(program)
 interpret_program(program)
