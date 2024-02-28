@@ -3,7 +3,6 @@ from sys import argv
 
 stack = []
 iota_c = -1
-line_count = 0
 
 def die(msg):
     print(f"error: {msg}"); exit(1)
@@ -60,16 +59,6 @@ def op_str(op):
         case Ops.OP_DUP: return "dup"
         case Ops.OP_SWAP: return "swap"
         case Ops.OP_DROP: return "drop"
-
-def die_interpreter(msg, op):
-    '''
-    source_line = source[line_count].strip()
-    idx = source_line.find(op_str(op))
-    source_line = source_line.replace(source_line[idx], f"\x1b[91m{source_line[idx]}\x1b[0m", 1)
-    print(source_line)
-    print(f"error @ {line_count + 1}:{idx}: {msg}"); exit(1)
-    '''
-    print(f"error: {msg}"); exit(1)
 
 def push(x):
     return (Ops.OP_PUSH, x)
@@ -235,8 +224,6 @@ def interpret_program(prog):
                 if len(stack) <= 0:
                     die_interpreter("Stack is empty, cannot drop", op[0])
                 stack.pop()
-
-    op_count = 0
 
 program = load_program_from_file(program_path)
 interpret_program(program)
