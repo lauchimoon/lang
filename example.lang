@@ -1,6 +1,5 @@
-1 1 + 2 = if
-    2 2 + 4 = if
-        2 .
-    end
-    1 .
+34 35 + 70 == if
+    true .
+else
+    false .
 end

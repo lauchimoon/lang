@@ -147,6 +147,9 @@ def boolval(val):
 def iff():
     return (Ops.OP_IF, )
 
+def elsee():
+    return (Ops.OP_ELSE, )
+
 def end():
     return (Ops.OP_END, )
 
@@ -180,6 +183,7 @@ def op_from_word(word):
 
         # Control flow
         case "if": return iff()
+        case "else": return elsee()
         case "end": return end()
 
         # Builtins
@@ -196,6 +200,11 @@ def load_program_from_str(inpt):
 def load_program_from_file(path):
     with open(path, "r") as f:
         return load_program_from_str(f.read())
+
+def find_op(prog, op):
+    for p in prog:
+        if p[0] == op:
+            return p
 
 def interpret_program(prog):
     len_prog = len(prog)
@@ -344,16 +353,35 @@ def interpret_program(prog):
 
             case Ops.OP_IF:
                 # TODO: nested if does not need 'end'
-                find = end()
-                try:
-                    prog.index(find)
-                except ValueError:
+                if not end() in prog:
                     die("if block missing end")
 
+                else_find = elsee() in prog
+                if len(stack) <= 0:
+                    die("if must have a condition")
+
                 cond = stack.pop()
-                if cond:
+                if cond and not else_find:
                     i += 1
                     op = prog[i]
+                elif cond and else_find: # This is the worst hack you will ever see
+                    tmp_op = list(op)
+                    tmp_op.append(True)
+                    prog[i] = tuple(tmp_op)
+                    i += 1
+                elif not cond and else_find:
+                    tmp_op = list(op)
+                    tmp_op.append(False)
+                    prog[i] = tuple(tmp_op)
+                    i = prog.index(elsee())
+                    op = prog[i]
+                else:
+                    i = prog.index(end())
+                    op = prog[i]
+            case Ops.OP_ELSE:
+                # This is the worst hack you will ever see
+                if not find_op(prog, Ops.OP_IF)[1]:
+                    i += 1
                 else:
                     i = prog.index(end())
                     op = prog[i]
@@ -382,8 +410,7 @@ def interpret_program(prog):
                 word = op[1]
                 die(f"Unknown word '{word}'")
 
-        #print(prog[i], i)
-        #print(stack)
+        #print(op, stack)
 
 program = load_program_from_file(program_path)
 interpret_program(program)
