@@ -62,6 +62,10 @@ def op_str(op):
         case Ops.OP_LESSEQ: return "<="
         case Ops.OP_GRTR: return ">"
         case Ops.OP_GRTREQ: return ">="
+        case Ops.OP_NOT: return "!"
+        case Ops.OP_AND: return "and"
+        case Ops.OP_OR: return "or"
+        case Ops.OP_XOR: return "xor"
         case Ops.OP_DISPLAY: return "."
         case Ops.OP_DUP: return "dup"
         case Ops.OP_SWAP: return "swap"
@@ -183,36 +187,48 @@ def interpret_program(prog):
             case Ops.OP_PUSH:
                 stack.append(op[1])
             case Ops.OP_ADD:
+                if len(stack) < 2:
+                    die(f"Two operands are required for '{op_str(op[0])}'")
                 b = stack.pop()
                 a = stack.pop()
                 stack.append(a + b)
             case Ops.OP_SUB:
+                if len(stack) < 2:
+                    die(f"Two operands are required for '{op_str(op[0])}'")
                 b = stack.pop()
                 a = stack.pop()
                 stack.append(a - b)
             case Ops.OP_MUL:
+                if len(stack) < 2:
+                    die(f"Two operands are required for '{op_str(op[0])}'")
                 b = stack.pop()
                 a = stack.pop()
                 stack.append(a * b)
             case Ops.OP_DIV:
+                if len(stack) < 2:
+                    die(f"Two operands are required for '{op_str(op[0])}'")
                 b = stack.pop()
                 a = stack.pop()
                 if b == 0:
                     die("Division by 0 is not allowed", op[0])
                 stack.append(a // b)
             case Ops.OP_MOD:
+                if len(stack) < 2:
+                    die(f"Two operands are required for '{op_str(op[0])}'")
                 b = stack.pop()
                 a = stack.pop()
                 if b == 0:
                     die("Modulo a % 0 is not allowed", op[0])
                 stack.append(a % b)
             case Ops.OP_POW:
+                if len(stack) < 2:
+                    die(f"Two operands are required for '{op_str(op[0])}'")
                 b = stack.pop()
                 a = stack.pop()
                 stack.append(a ** b)
             case Ops.OP_DISPLAY:
                 if len(stack) <= 0:
-                    die("Stack is empty, cannot display", op[0])
+                    die("Stack is empty, cannot display")
 
                 a = stack.pop()
                 if type(a) == bool:
@@ -222,44 +238,64 @@ def interpret_program(prog):
 
             # Boolean/logic
             case Ops.OP_EQUAL:
+                if len(stack) < 2:
+                    die(f"Two operands are required for '{op_str(op[0])}'")
                 b = stack.pop()
                 a = stack.pop()
                 stack.append(a == b)
             case Ops.OP_NEQUAL:
+                if len(stack) < 2:
+                    die(f"Two operands are required for '{op_str(op[0])}'")
                 b = stack.pop()
                 a = stack.pop()
                 stack.append(a != b)
             case Ops.OP_LESS:
+                if len(stack) < 2:
+                    die(f"Two operands are required for '{op_str(op[0])}'")
                 b = stack.pop()
                 a = stack.pop()
                 stack.append(a < b)
             case Ops.OP_LESSEQ:
+                if len(stack) < 2:
+                    die(f"Two operands are required for '{op_str(op[0])}'")
                 b = stack.pop()
                 a = stack.pop()
                 stack.append(a <= b)
             case Ops.OP_GRTR:
+                if len(stack) < 2:
+                    die(f"Two operands are required for '{op_str(op[0])}'")
                 b = stack.pop()
                 a = stack.pop()
                 stack.append(a > b)
             case Ops.OP_GRTREQ:
+                if len(stack) < 2:
+                    die(f"Two operands are required for '{op_str(op[0])}'")
                 b = stack.pop()
                 a = stack.pop()
                 stack.append(a >= b)
 
             case Ops.OP_NOT:
+                if len(stack) < 1:
+                    die(f"One operand is required for '{op_str(op[0])}'")
                 a = stack.pop()
                 stack.append(not a)
             case Ops.OP_AND:
+                if len(stack) < 2:
+                    die(f"Two operands are required for '{op_str(op[0])}'")
                 b = stack.pop()
                 a = stack.pop()
                 pushb = bool(a) and bool(b)
                 stack.append(pushb)
             case Ops.OP_OR:
+                if len(stack) < 2:
+                    die(f"Two operands are required for '{op_str(op[0])}'")
                 b = stack.pop()
                 a = stack.pop()
                 pushb = bool(a) or bool(b)
                 stack.append(pushb)
             case Ops.OP_XOR:
+                if len(stack) < 2:
+                    die(f"Two operands are required for '{op_str(op[0])}'")
                 b = stack.pop()
                 a = stack.pop()
                 pushb = bool(a)^bool(b)
@@ -270,15 +306,15 @@ def interpret_program(prog):
             # Builtins
             case Ops.OP_DUP:
                 if len(stack) <= 0:
-                    die("Stack is empty, cannot dup", op[0])
+                    die("Stack is empty, cannot dup")
                 stack.append(stack[-1])
             case Ops.OP_SWAP:
                 if len(stack) < 2:
-                    die("Not enough items to swap", op[0])
+                    die("Not enough items to swap")
                 stack[-1], stack[-2] = stack[-2], stack[-1]
             case Ops.OP_DROP:
                 if len(stack) <= 0:
-                    die("Stack is empty, cannot drop", op[0])
+                    die("Stack is empty, cannot drop")
                 stack.pop()
 
             # Unknown
