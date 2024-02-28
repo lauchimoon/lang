@@ -258,7 +258,7 @@ def interpret_program(prog):
                 b = stack.pop()
                 a = stack.pop()
                 pushb = bool(a) or bool(b)
-                stack.append(a or b)
+                stack.append(pushb)
             case Ops.OP_XOR:
                 b = stack.pop()
                 a = stack.pop()
