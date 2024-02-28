@@ -228,13 +228,10 @@ def interpret_program(prog):
                 stack.append(a ** b)
             case Ops.OP_DISPLAY:
                 if len(stack) <= 0:
-                    die("Stack is empty, cannot display")
-
-                a = stack.pop()
-                if type(a) == bool:
-                    print("true" if a else "false") # better :)
+                    print()
                 else:
-                    print(a)
+                    a = stack.pop()
+                    print(("true" if a else "false") if type(a) == bool else a)
 
             # Boolean/logic
             case Ops.OP_EQUAL:
