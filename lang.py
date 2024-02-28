@@ -41,6 +41,7 @@ class Ops(IntEnum):
     OP_BOOL_VAL = iota()
 
     OP_IF = iota()
+    OP_ELSE = iota()
     OP_END = iota()
 
     OP_DISPLAY = iota()
@@ -69,6 +70,9 @@ def op_str(op):
         case Ops.OP_AND: return "and"
         case Ops.OP_OR: return "or"
         case Ops.OP_XOR: return "xor"
+        case Ops.OP_IF: return "if"
+        case Ops.OP_ELSE: return "else"
+        case Ops.OP_END: return "end"
         case Ops.OP_DISPLAY: return "."
         case Ops.OP_DUP: return "dup"
         case Ops.OP_SWAP: return "swap"
@@ -339,6 +343,13 @@ def interpret_program(prog):
                 i += 1
 
             case Ops.OP_IF:
+                # TODO: nested if does not need 'end'
+                find = end()
+                try:
+                    prog.index(find)
+                except ValueError:
+                    die("if block missing end")
+
                 cond = stack.pop()
                 if cond:
                     i += 1
