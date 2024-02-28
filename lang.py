@@ -34,11 +34,18 @@ class Ops(IntEnum):
     OP_LESSEQ = iota()
     OP_GRTR = iota()
     OP_GRTREQ = iota()
+    OP_NOT = iota()
+    OP_AND = iota()
+    OP_OR = iota()
+    OP_XOR = iota()
+    OP_BOOL_VAL = iota()
 
     OP_DISPLAY = iota()
     OP_DUP = iota()
     OP_SWAP = iota()
     OP_DROP = iota()
+
+    OP_UNKNOWN = iota()
 
 def op_str(op):
     match op:
@@ -111,6 +118,21 @@ def grtr():
 def grtreq():
     return (Ops.OP_GRTREQ, )
 
+def nott():
+    return (Ops.OP_NOT, )
+
+def andd():
+    return (Ops.OP_AND, )
+
+def orr():
+    return (Ops.OP_OR, )
+
+def xor():
+    return (Ops.OP_XOR, )
+
+def boolval(val):
+    return (Ops.OP_BOOL_VAL, val)
+
 def op_from_word(word):
     if word.isnumeric():
         return push(int(word))
@@ -125,18 +147,27 @@ def op_from_word(word):
         case "^": return poww()
         case ".": return display()
 
-        # Boolean
+        # Boolean/logic
         case "=": return eq()
         case "!=": return neq()
         case "<": return less()
         case "<=": return lesseq()
         case ">": return grtr()
         case ">=": return grtreq()
+        case "!": return nott()
+        case "and": return andd()
+        case "or": return orr()
+        case "xor": return xor()
+        case "true": return boolval(True)
+        case "false": return boolval(False)
 
         # Builtins
         case "dup": return dup()
         case "swap": return swap()
         case "drop": return drop()
+
+        case _: return (Ops.OP_UNKNOWN, word)
+
 
 def load_program_from_str(inpt):
     return [op_from_word(word) for word in inpt.split()]
@@ -167,13 +198,13 @@ def interpret_program(prog):
                 b = stack.pop()
                 a = stack.pop()
                 if b == 0:
-                    die_interpreter("Division by 0 is not allowed", op[0])
+                    die("Division by 0 is not allowed", op[0])
                 stack.append(a // b)
             case Ops.OP_MOD:
                 b = stack.pop()
                 a = stack.pop()
                 if b == 0:
-                    die_interpreter("Modulo a % 0 is not allowed", op[0])
+                    die("Modulo a % 0 is not allowed", op[0])
                 stack.append(a % b)
             case Ops.OP_POW:
                 b = stack.pop()
@@ -181,11 +212,15 @@ def interpret_program(prog):
                 stack.append(a ** b)
             case Ops.OP_DISPLAY:
                 if len(stack) <= 0:
-                    die_interpreter("Stack is empty, cannot display", op[0])
+                    die("Stack is empty, cannot display", op[0])
 
-                print(stack.pop())
+                a = stack.pop()
+                if type(a) == bool:
+                    print("true" if a else "false") # better :)
+                else:
+                    print(a)
 
-            # Boolean expressions
+            # Boolean/logic
             case Ops.OP_EQUAL:
                 b = stack.pop()
                 a = stack.pop()
@@ -211,19 +246,44 @@ def interpret_program(prog):
                 a = stack.pop()
                 stack.append(a >= b)
 
+            case Ops.OP_NOT:
+                a = stack.pop()
+                stack.append(not a)
+            case Ops.OP_AND:
+                b = stack.pop()
+                a = stack.pop()
+                pushb = bool(a) and bool(b)
+                stack.append(pushb)
+            case Ops.OP_OR:
+                b = stack.pop()
+                a = stack.pop()
+                pushb = bool(a) or bool(b)
+                stack.append(a or b)
+            case Ops.OP_XOR:
+                b = stack.pop()
+                a = stack.pop()
+                pushb = bool(a)^bool(b)
+                stack.append(pushb)
+            case Ops.OP_BOOL_VAL:
+                stack.append(op[1])
+
             # Builtins
             case Ops.OP_DUP:
                 if len(stack) <= 0:
-                    die_interpreter("Stack is empty, cannot dup", op[0])
+                    die("Stack is empty, cannot dup", op[0])
                 stack.append(stack[-1])
             case Ops.OP_SWAP:
                 if len(stack) < 2:
-                    die_interpreter("Not enough items to swap", op[0])
+                    die("Not enough items to swap", op[0])
                 stack[-1], stack[-2] = stack[-2], stack[-1]
             case Ops.OP_DROP:
                 if len(stack) <= 0:
-                    die_interpreter("Stack is empty, cannot drop", op[0])
+                    die("Stack is empty, cannot drop", op[0])
                 stack.pop()
+
+            # Unknown
+            case Ops.OP_UNKNOWN:
+                die(f"Unknown operator '{op[1]}'")
 
 program = load_program_from_file(program_path)
 interpret_program(program)
