@@ -59,7 +59,7 @@ def op_str(op):
         case Ops.OP_DIV: return "/"
         case Ops.OP_MOD: return "mod"
         case Ops.OP_POW: return "^"
-        case Ops.OP_EQUAL: return "="
+        case Ops.OP_EQUAL: return "=="
         case Ops.OP_NEQUAL: return "!="
         case Ops.OP_LESS: return "<"
         case Ops.OP_LESSEQ: return "<="
@@ -161,7 +161,7 @@ def op_from_word(word):
         case ".": return display()
 
         # Boolean/logic
-        case "=": return eq()
+        case "==": return eq()
         case "!=": return neq()
         case "<": return less()
         case "<=": return lesseq()
