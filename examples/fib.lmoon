@@ -1,0 +1,16 @@
+a 1 =
+b 2 =
+term a b + =
+sum 2 =
+
+while term 4000000 < do
+    a b =
+    b term =
+    term a b + =
+
+    term 2 mod 0 == if
+        sum sum term + =
+    end
+end
+
+sum .
