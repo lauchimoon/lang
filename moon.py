@@ -6,7 +6,8 @@ iota_c = -1
 variables = {}
 builtin_ops = [
     "true", "false", "mod", "and", "or", "xor",
-    "if", "else", "end", "dup", "swap", "drop"
+    "if", "else", "end", "dup", "swap", "drop",
+    "while", "do"
 ]
 
 def die(msg):
@@ -57,11 +58,14 @@ class Ops(IntEnum):
     OP_SYMBOL = iota()
     OP_SET = iota()
 
+    OP_WHILE = iota()
+    OP_DO = iota()
+
     OP_UNKNOWN = iota()
 
 def op_str(op):
     match op:
-        case Ops.OP_PUSH: return op # we know it's numerical
+        case Ops.OP_PUSH: return op
         case Ops.OP_ADD: return "+"
         case Ops.OP_SUB: return "-"
         case Ops.OP_MUL: return "*"
@@ -87,6 +91,8 @@ def op_str(op):
         case Ops.OP_DROP: return "drop"
         case Ops.OP_SYMBOL: return op
         case Ops.OP_SET: return "="
+        case Ops.OP_WHILE: return "while"
+        case Ops.OP_DO: return "do"
 
 def push(x):
     return (Ops.OP_PUSH, x)
@@ -169,6 +175,12 @@ def symbol(name):
 def sett():
     return (Ops.OP_SET, )
 
+def whilee():
+    return (Ops.OP_WHILE, )
+
+def do():
+    return (Ops.OP_DO, )
+
 def op_from_word(word):
     if word.isnumeric():
         return push(int(word))
@@ -208,6 +220,10 @@ def op_from_word(word):
         # Variables
         case "=": return sett()
 
+        # Loops
+        case "while": return whilee()
+        case "do": return do()
+
         # Builtins
         case "dup": return dup()
         case "swap": return swap()
@@ -229,7 +245,18 @@ def crossreference_blocks(prog):
                 stck.append(i)
             case Ops.OP_END:
                 block_idx = stck.pop()
-                prog[block_idx] = (prog[block_idx][0], i) # if or else references end
+                if prog[block_idx][0] == Ops.OP_IF or prog[block_idx][0] == Ops.OP_ELSE:
+                    prog[block_idx] = (prog[block_idx][0], i) # if or else references end
+                    prog[i] = (Ops.OP_END, i + 1)
+                elif prog[block_idx][0] == Ops.OP_DO:
+                    prog[i] = (Ops.OP_END, prog[block_idx][1]) # do references end
+                    prog[block_idx] = (Ops.OP_DO, i + 1)
+            case Ops.OP_WHILE:
+                stck.append(i)
+            case Ops.OP_DO:
+                while_idx = stck.pop()
+                prog[i] = (Ops.OP_DO, while_idx)
+                stck.append(i)
 
     return prog
 
@@ -383,7 +410,7 @@ def interpret_program(prog):
                     die("else block missing end")
                 i = op[1]
             case Ops.OP_END:
-                i += 1
+                i = op[1]
 
             # Variables
             case Ops.OP_SYMBOL:
@@ -395,7 +422,20 @@ def interpret_program(prog):
                     variables[name[1]] = variables[value[1]]
                 else:
                     variables[name[1]] = value
+
                 i += 1
+
+            # Loops
+            case Ops.OP_WHILE:
+                i += 1
+            case Ops.OP_DO:
+                cond = stack.pop()
+                if cond:
+                    i += 1
+                else:
+                    if len(op) < 2:
+                        die("while block missing end")
+                    i = op[1]
 
             # Builtins
             case Ops.OP_DUP:

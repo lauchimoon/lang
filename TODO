@@ -1,4 +1,4 @@
 [x] - else is completely broken when nested, so refactor if-else behaviour
 [x] - variables
 [x] - using variables as other variables values
-[] - while
+[x] - while

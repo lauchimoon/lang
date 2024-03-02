@@ -1,2 +1,2 @@
-# Toy stack-based language
-WIP, don't even have a name for it yet :P
+# moon language
+Toy stack-based language made in a few days
