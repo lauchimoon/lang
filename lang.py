@@ -391,8 +391,10 @@ def interpret_program(prog):
             case Ops.OP_SET:
                 value = stack.pop()
                 name = stack.pop()
-                variables[name[1]] = value
-                #print(variables)
+                if type(value) == tuple and value[0] == Ops.OP_SYMBOL:
+                    variables[name[1]] = variables[value[1]]
+                else:
+                    variables[name[1]] = value
                 i += 1
 
             # Builtins
