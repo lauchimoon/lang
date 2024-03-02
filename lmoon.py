@@ -1,5 +1,6 @@
 from enum import IntEnum
-from sys import argv
+import sys
+import string
 
 stack = []
 iota_c = -1
@@ -7,12 +8,16 @@ variables = {}
 builtin_ops = [
     "true", "false", "mod", "and", "or", "xor",
     "if", "else", "end", "dup", "swap", "drop",
-    "while", "do"
+    "while", "do", "strb", "stre",
+
+    ".", "+", "-", "*", "/", "^", "==", "!=",
+    "<", "<=", ">", ">=", "!", "=",
 ]
 
 def die(msg):
     print(f"error: {msg}"); exit(1)
 
+argv = sys.argv
 if len(argv) < 2:
     die("Missing filename argument")
 
@@ -61,6 +66,10 @@ class Ops(IntEnum):
     OP_WHILE = iota()
     OP_DO = iota()
 
+    OP_STRB = iota()
+    OP_STRE = iota()
+    OP_STRING = iota()
+
     OP_UNKNOWN = iota()
 
 def op_str(op):
@@ -93,6 +102,8 @@ def op_str(op):
         case Ops.OP_SET: return "="
         case Ops.OP_WHILE: return "while"
         case Ops.OP_DO: return "do"
+        case Ops.OP_STRB: return "strb"
+        case Ops.OP_STRE: return "stre"
 
 def push(x):
     return (Ops.OP_PUSH, x)
@@ -181,11 +192,23 @@ def whilee():
 def do():
     return (Ops.OP_DO, )
 
+def strb():
+    return (Ops.OP_STRB, )
+
+def stre():
+    return (Ops.OP_STRE, )
+
+def stringg(text):
+    return (Ops.OP_STRING, text, )
+
+def isalnum(s):
+    return s.isprintable()
+
 def op_from_word(word):
     if word.isnumeric():
         return push(int(word))
 
-    if word.isalnum() and word not in builtin_ops:
+    if isalnum(word) and word not in builtin_ops:
         return push(symbol(word))
 
     match word:
@@ -224,6 +247,10 @@ def op_from_word(word):
         case "while": return whilee()
         case "do": return do()
 
+        # Strings (very hacky)
+        case "strb": return strb()
+        case "stre": return stre()
+
         # Builtins
         case "dup": return dup()
         case "swap": return swap()
@@ -257,11 +284,41 @@ def crossreference_blocks(prog):
                 while_idx = stck.pop()
                 prog[i] = (Ops.OP_DO, while_idx)
                 stck.append(i)
+            case Ops.OP_STRB:
+                stck.append(i)
+            case Ops.OP_STRE:
+                begin_idx = stck.pop()
+                prog[i] = (Ops.OP_STRE, begin_idx + 1)
+
+    return prog
+
+def prepare_strings(prog):
+    stck = []
+    i = 0
+
+    while i < len(prog):
+        op = prog[i]
+        match op[0]:
+            case Ops.OP_STRB:
+                stck.append(i)
+            case Ops.OP_STRE:
+                begin_idx = stck.pop() + 1
+                text_separate = []
+                for _ in range(begin_idx, i):
+                    i -= 1
+                    x = prog.pop(i)
+                    text_separate.append(x)
+
+                text_separate.reverse()
+                text_str = " ".join([x[1][1] for x in text_separate])
+                prog[i] = stringg(text_str)
+
+        i += 1
 
     return prog
 
 def load_program_from_str(inpt):
-    return crossreference_blocks([op_from_word(word) for word in inpt.split()])
+    return prepare_strings(crossreference_blocks([op_from_word(word) for word in inpt.split()]))
 
 def load_program_from_file(path):
     with open(path, "r") as f:
@@ -327,8 +384,8 @@ def perform_operator(operator):
 def interpret_program(prog):
     len_prog = len(prog)
     i = 0
+
     while i < len_prog:
-        #print(stack)
         op = prog[i]
         match op[0]:
             # Operators
@@ -437,6 +494,13 @@ def interpret_program(prog):
                         die("while block missing end")
                     i = op[1]
 
+            # Strings (very hacky)
+            case Ops.OP_STRB:
+                i += 1
+            case Ops.OP_STRING:
+                stack.append(op[1])
+                i += 1
+
             # Builtins
             case Ops.OP_DUP:
                 if len(stack) <= 0:
@@ -461,6 +525,21 @@ def interpret_program(prog):
                     if type(a) == tuple and a[0] == Ops.OP_SYMBOL:
                         var = variables[a[1]]
                         print(("true" if var else "false") if type(var) == bool else var)
+                    elif type(a) == str:
+                        raw = ""
+                        j = 0
+                        while j < len(a):
+                            c = a[j]
+                            if a[j] == '\\':
+                                match a[j + 1]:
+                                    case 'n': raw += '\n'; j += 2
+                                    case '\\': raw += '\\'
+                            else:
+                                raw += c
+
+                            j += 1
+
+                        print(raw, end='')
                     else:
                         print(("true" if a else "false") if type(a) == bool else a)
 

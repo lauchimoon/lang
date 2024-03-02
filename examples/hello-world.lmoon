@@ -1,0 +1,6 @@
+i 0 =
+while true do
+    strb Hello World x stre .
+    i i 1 + =
+    i .
+end
