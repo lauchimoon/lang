@@ -7,7 +7,7 @@ iota_c = -1
 variables = {}
 builtin_ops = [
     "true", "false", "mod", "and", "or", "xor",
-    "if", "else", "end", "dup", "swap", "drop",
+    "if", "else", "end", "dup",
     "while", "do", "strb", "stre",
 
     ".", "+", "-", "*", "/", "^", "==", "!=",
@@ -57,8 +57,6 @@ class Ops(IntEnum):
 
     OP_DISPLAY = iota()
     OP_DUP = iota()
-    OP_SWAP = iota()
-    OP_DROP = iota()
 
     OP_SYMBOL = iota()
     OP_SET = iota()
@@ -96,8 +94,6 @@ def op_str(op):
         case Ops.OP_END: return "end"
         case Ops.OP_DISPLAY: return "."
         case Ops.OP_DUP: return "dup"
-        case Ops.OP_SWAP: return "swap"
-        case Ops.OP_DROP: return "drop"
         case Ops.OP_SYMBOL: return op
         case Ops.OP_SET: return "="
         case Ops.OP_WHILE: return "while"
@@ -131,12 +127,6 @@ def display():
 
 def dup():
     return (Ops.OP_DUP, )
-
-def swap():
-    return (Ops.OP_SWAP, )
-
-def drop():
-    return (Ops.OP_DROP, )
 
 def eq():
     return (Ops.OP_EQUAL, )
@@ -253,8 +243,6 @@ def op_from_word(word):
 
         # Builtins
         case "dup": return dup()
-        case "swap": return swap()
-        case "drop": return drop()
 
         case _: return (Ops.OP_UNKNOWN, word)
 
@@ -506,16 +494,6 @@ def interpret_program(prog):
                 if len(stack) <= 0:
                     die("Stack is empty, cannot dup")
                 stack.append(stack[-1])
-                i += 1
-            case Ops.OP_SWAP:
-                if len(stack) < 2:
-                    die("Not enough items to swap")
-                stack[-1], stack[-2] = stack[-2], stack[-1]
-                i += 1
-            case Ops.OP_DROP:
-                if len(stack) <= 0:
-                    die("Stack is empty, cannot drop")
-                stack.pop()
                 i += 1
             case Ops.OP_DISPLAY:
                 if len(stack) <= 0:

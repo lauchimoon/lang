@@ -3,4 +3,5 @@
 [x] - using variables as other variables values
 [x] - while
 [x] - strings
-[] - check which builtins are truly useful in this language (dup, swap, drop)
+[x] - check which builtins are truly useful in this language (dup, swap, drop)
+[] - functions
