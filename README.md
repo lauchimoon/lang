@@ -1,2 +1,2 @@
 # lmoon language
-Toy stack-based language made in a few days
+Toy RPN language made in a few days
